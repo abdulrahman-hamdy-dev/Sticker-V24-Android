@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smart Energy Pro</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+background:#0b1220;
+color:white;
+font-family:Arial;
+text-align:center;
+}
+
+.card{
+background:#121a2b;
+padding:15px;
+margin:10px;
+border-radius:12px;
+}
+
+.value{
+font-size:28px;
+font-weight:bold;
+}
+
+button{
+padding:10px 20px;
+margin:5px;
+border:none;
+border-radius:8px;
+font-size:16px;
+cursor:pointer;
+}
+
+.on{background:green;color:white;}
+.off{background:red;color:white;}
+
+.alert{
+background:red;
+padding:10px;
+border-radius:10px;
+display:none;
+margin:10px;
+}
+</style>
+</head>
+
+<body>
+
+<button onclick="toggleLang()">🌐 Change Language</button>
+
+<h2 id="title">Smart Energy Pro</h2>
+
+<div id="alertBox" class="alert">⚠️ High Power Consumption!</div>
+
+<div class="card">Voltage <div id="v" class="value">--</div></div>
+<div class="card">Current <div id="c" class="value">--</div></div>
+<div class="card">Power <div id="p" class="value">--</div></div>
+<div class="card">Energy <div id="e" class="value">--</div></div>
+
+<div class="card">
+<h3>Load Control</h3>
+<button id="r1" class="off" onclick="toggle(1)">Relay 1 OFF</button>
+<button id="r2" class="off" onclick="toggle(2)">Relay 2 OFF</button>
+</div>
+
+<div class="card">
+<h3>Power Chart</h3>
+<canvas id="chart"></canvas>
+</div>
+
+<script>
+
+// ================== CONFIG ==================
+let powerLimit = 500;
+let energy = 0;
+
+// ================== CHART ==================
+let chartData = [];
+let labels = [];
+
+let ctx = document.getElementById('chart').getContext('2d');
+
+let chart = new Chart(ctx,{
+type:'line',
+data:{
+labels:labels,
+datasets:[{
+label:'Power',
+data:chartData,
+borderColor:'cyan',
+fill:false
+}]
+}
+});
+
+// ================== LANGUAGE ==================
+let lang = "en";
+
+function toggleLang(){
+lang = (lang==="en")?"ar":"en";
+
+if(lang==="ar"){
+document.body.dir="rtl";
+title.innerText="نظام الطاقة الذكي";
+}else{
+document.body.dir="ltr";
+title.innerText="Smart Energy Pro";
+}
+}
+
+// ================== REAL DATA INPUT ==================
+// 👇 هنا أهم جزء
+// النظام كله يعتمد على دالة واحدة فقط
+
+function updateData(data){
+
+// data = {v,c,p}
+
+document.getElementById("v").innerText = data.v;
+document.getElementById("c").innerText = data.c;
+document.getElementById("p").innerText = data.p;
+
+energy += data.p / 3600;
+document.getElementById("e").innerText = energy.toFixed(3);
+
+// ALERT
+if(data.p > powerLimit){
+document.getElementById("alertBox").style.display="block";
+}else{
+document.getElementById("alertBox").style.display="none";
+}
+
+// CHART
+chartData.push(data.p);
+labels.push(new Date().toLocaleTimeString());
+
+if(chartData.length>20){
+chartData.shift();
+labels.shift();
+}
+
+chart.update();
+}
+
+// ================== RELAY CONTROL (READY API) ==================
+function toggle(id){
+
+fetch(`/relay/${id}`,{method:"POST"})
+.then(res=>res.json())
+.then(data=>{
+
+let btn = document.getElementById("r"+id);
+
+if(data.state){
+btn.className="on";
+btn.innerText="Relay "+id+" ON";
+}else{
+btn.className="off";
+btn.innerText="Relay "+id+" OFF";
+}
+
+});
+}
+
+</script>
+
+</body>
+</html>
